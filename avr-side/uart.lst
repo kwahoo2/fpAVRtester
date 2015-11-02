@@ -1,0 +1,205 @@
+   1               		.file	"uart.c"
+   2               	__SP_H__ = 0x3e
+   3               	__SP_L__ = 0x3d
+   4               	__SREG__ = 0x3f
+   5               	__tmp_reg__ = 0
+   6               	__zero_reg__ = 1
+   7               		.text
+   8               	.Ltext0:
+   9               		.cfi_sections	.debug_frame
+  10               	.global	usart_init
+  12               	usart_init:
+  13               	.LFB1:
+  14               		.file 1 "uart.c"
+   1:uart.c        **** #include "uart.h"
+   2:uart.c        **** 
+   3:uart.c        **** void usart_init( uint16_t ubrr) {
+  15               		.loc 1 3 0
+  16               		.cfi_startproc
+  17               	.LVL0:
+  18               	/* prologue: function */
+  19               	/* frame size = 0 */
+  20               	/* stack size = 0 */
+  21               	.L__stack_usage = 0
+   4:uart.c        **** 
+   5:uart.c        ****     // Set baud rate
+   6:uart.c        **** 
+   7:uart.c        ****     UBRRH = (uint8_t)(ubrr>>8);
+  22               		.loc 1 7 0
+  23 0000 90BD      		out 0x20,r25
+   8:uart.c        ****     UBRRL = (uint8_t)ubrr;
+  24               		.loc 1 8 0
+  25 0002 89B9      		out 0x9,r24
+   9:uart.c        **** 
+  10:uart.c        ****     // Enable receiver and transmitter
+  11:uart.c        **** 
+  12:uart.c        ****     UCSRB = (1<<RXEN)|(1<<TXEN);
+  26               		.loc 1 12 0
+  27 0004 88E1      		ldi r24,lo8(24)
+  28               	.LVL1:
+  29 0006 8AB9      		out 0xa,r24
+  13:uart.c        **** 
+  14:uart.c        ****     // Set frame format: 8data, 1stop bit
+  15:uart.c        **** 
+  16:uart.c        ****     UCSRC = (1<<URSEL)|(3<<UCSZ0);
+  30               		.loc 1 16 0
+  31 0008 86E8      		ldi r24,lo8(-122)
+  32 000a 80BD      		out 0x20,r24
+  33 000c 0895      		ret
+  34               		.cfi_endproc
+  35               	.LFE1:
+  37               	.global	usart_putchar
+  39               	usart_putchar:
+  40               	.LFB2:
+  17:uart.c        **** }
+  18:uart.c        **** 
+  19:uart.c        **** void usart_putchar(char data) {
+  41               		.loc 1 19 0
+  42               		.cfi_startproc
+  43               	/* prologue: function */
+  44               	/* frame size = 0 */
+  45               	/* stack size = 0 */
+  46               	.L__stack_usage = 0
+  47               	.LVL2:
+  48               	.L4:
+  20:uart.c        **** 
+  21:uart.c        ****     // Wait for empty transmit buffer
+  22:uart.c        **** 
+  23:uart.c        ****     while ( !(UCSRA & (_BV(UDRE))) );
+  49               		.loc 1 23 0 discriminator 1
+  50 000e 5D9B      		sbis 0xb,5
+  51 0010 00C0      		rjmp .L4
+  24:uart.c        **** 
+  25:uart.c        ****     // Start transmission
+  26:uart.c        **** 
+  27:uart.c        ****     UDR = data;
+  52               		.loc 1 27 0
+  53 0012 8CB9      		out 0xc,r24
+  54 0014 0895      		ret
+  55               		.cfi_endproc
+  56               	.LFE2:
+  58               	.global	usart_getchar
+  60               	usart_getchar:
+  61               	.LFB3:
+  28:uart.c        **** }
+  29:uart.c        **** char usart_getchar(void) {
+  62               		.loc 1 29 0
+  63               		.cfi_startproc
+  64               	/* prologue: function */
+  65               	/* frame size = 0 */
+  66               	/* stack size = 0 */
+  67               	.L__stack_usage = 0
+  68               	.L8:
+  30:uart.c        **** 
+  31:uart.c        ****     // Wait for incoming data
+  32:uart.c        **** 
+  33:uart.c        ****     while ( !(UCSRA & (_BV(RXC))) );
+  69               		.loc 1 33 0 discriminator 1
+  70 0016 5F9B      		sbis 0xb,7
+  71 0018 00C0      		rjmp .L8
+  34:uart.c        **** 
+  35:uart.c        ****     // Return the data
+  36:uart.c        **** 
+  37:uart.c        ****     return UDR;
+  72               		.loc 1 37 0
+  73 001a 8CB1      		in r24,0xc
+  38:uart.c        **** }
+  74               		.loc 1 38 0
+  75 001c 0895      		ret
+  76               		.cfi_endproc
+  77               	.LFE3:
+  79               	.global	usart_kbhit
+  81               	usart_kbhit:
+  82               	.LFB4:
+  39:uart.c        **** 
+  40:uart.c        **** unsigned char usart_kbhit(void) {
+  83               		.loc 1 40 0
+  84               		.cfi_startproc
+  85               	/* prologue: function */
+  86               	/* frame size = 0 */
+  87               	/* stack size = 0 */
+  88               	.L__stack_usage = 0
+  89               	.LVL3:
+  41:uart.c        **** 
+  42:uart.c        ****     //return nonzero if char waiting polled version
+  43:uart.c        **** 
+  44:uart.c        ****     unsigned char b;
+  45:uart.c        ****     b=0;
+  46:uart.c        ****     if(UCSRA & (1<<RXC)) b=1;
+  90               		.loc 1 46 0
+  91 001e 8BB1      		in r24,0xb
+  47:uart.c        ****     return b;
+  48:uart.c        **** }
+  92               		.loc 1 48 0
+  93 0020 881F      		rol r24
+  94 0022 8827      		clr r24
+  95 0024 881F      		rol r24
+  96 0026 0895      		ret
+  97               		.cfi_endproc
+  98               	.LFE4:
+ 100               	.global	usart_pstr
+ 102               	usart_pstr:
+ 103               	.LFB5:
+  49:uart.c        **** 
+  50:uart.c        **** void usart_pstr(char *s) {
+ 104               		.loc 1 50 0
+ 105               		.cfi_startproc
+ 106               	.LVL4:
+ 107 0028 CF93      		push r28
+ 108               	.LCFI0:
+ 109               		.cfi_def_cfa_offset 3
+ 110               		.cfi_offset 28, -2
+ 111 002a DF93      		push r29
+ 112               	.LCFI1:
+ 113               		.cfi_def_cfa_offset 4
+ 114               		.cfi_offset 29, -3
+ 115               	/* prologue: function */
+ 116               	/* frame size = 0 */
+ 117               	/* stack size = 2 */
+ 118               	.L__stack_usage = 2
+ 119 002c EC01      		movw r28,r24
+ 120               	.LVL5:
+ 121               	.L11:
+  51:uart.c        **** 
+  52:uart.c        ****     // loop through entire string
+  53:uart.c        **** 
+  54:uart.c        ****     while (*s) {
+ 122               		.loc 1 54 0 discriminator 1
+ 123 002e 8991      		ld r24,Y+
+ 124               	.LVL6:
+ 125 0030 8823      		tst r24
+ 126 0032 01F0      		breq .L13
+  55:uart.c        ****         usart_putchar(*s);
+ 127               		.loc 1 55 0
+ 128 0034 00D0      		rcall usart_putchar
+ 129               	.LVL7:
+ 130 0036 00C0      		rjmp .L11
+ 131               	.LVL8:
+ 132               	.L13:
+ 133               	/* epilogue start */
+  56:uart.c        ****         s++;
+  57:uart.c        ****     }
+  58:uart.c        **** }...
+ 134               		.loc 1 58 0
+ 135 0038 DF91      		pop r29
+ 136 003a CF91      		pop r28
+ 137               	.LVL9:
+ 138 003c 0895      		ret
+ 139               		.cfi_endproc
+ 140               	.LFE5:
+ 142               	.Letext0:
+ 143               		.file 2 "/usr/lib/avr/include/stdint.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 uart.c
+     /tmp/cc1fOrfO.s:2      *ABS*:000000000000003e __SP_H__
+     /tmp/cc1fOrfO.s:3      *ABS*:000000000000003d __SP_L__
+     /tmp/cc1fOrfO.s:4      *ABS*:000000000000003f __SREG__
+     /tmp/cc1fOrfO.s:5      *ABS*:0000000000000000 __tmp_reg__
+     /tmp/cc1fOrfO.s:6      *ABS*:0000000000000001 __zero_reg__
+     /tmp/cc1fOrfO.s:12     .text:0000000000000000 usart_init
+     /tmp/cc1fOrfO.s:39     .text:000000000000000e usart_putchar
+     /tmp/cc1fOrfO.s:60     .text:0000000000000016 usart_getchar
+     /tmp/cc1fOrfO.s:81     .text:000000000000001e usart_kbhit
+     /tmp/cc1fOrfO.s:102    .text:0000000000000028 usart_pstr
+
+NO UNDEFINED SYMBOLS

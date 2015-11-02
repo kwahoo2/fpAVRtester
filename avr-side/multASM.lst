@@ -1,0 +1,45 @@
+   1               	# 1 "multASM.S"
+   1               	
+   0               	
+   2               	
+   3               	;******************************************************************************
+   4               	;*
+   5               	;* FUNCTION
+   6               	;*	muls16x16
+   7               	;* DECRIPTION
+   8               	;*	Signed multiply of two 16bits numbers with 16 bits result.
+   9               	;* USAGE
+  10               	;*	r25:r24 = r23:r22 * r25:r24
+  11               	;******************************************************************************
+  12               	;int multfix(int a,int b)
+  13               	
+  14               	.global multfix
+  15               	multfix:
+  16               		;input parameters are in r23:r22(hi:lo) and r25:r24
+  17               		  
+  18               	  	;b aready in right place -- 2nd parameter is in r22:23											
+  19               	
+  20:multASM.S     ****     mov  r20,r24 ;load a -- first parameter is in r24:25 
+  21:multASM.S     **** 	mov  r21,r25											
+  22               	
+  23:multASM.S     **** 	muls r23, r21	; (signed)ah * (signed)bh		
+  24:multASM.S     **** 	mov	 r25, r0         ;r18, r0"						
+  25:multASM.S     **** 	mul	 r22, r20		; al * bl"						
+  26:multASM.S     **** 	mov  r24, r1      ;movw	r17:r16, r1:r0"		
+  27               												
+  28:multASM.S     **** 	mulsu r23, r20	; (signed)ah * bl				
+  29:multASM.S     **** 	add	 r24, r0         ;r17, r0"						
+  30:multASM.S     **** 	adc	 r25, r1         ;r18, r1"	
+  31               							
+  32:multASM.S     **** 	mulsu r21, r22	; (signed)bh * al				
+  33:multASM.S     **** 	add	 r24, r0         ;r17, r0"					
+  34:multASM.S     **** 	adc	 r25, r1         ;r18, r1"						
+  35               												
+  36:multASM.S     **** 	clr  r1   			; required by GCC								
+  37               		
+  38               		;return values are in 25:r24 (hi:lo)		 								
+  39:multASM.S     ****  	ret
+DEFINED SYMBOLS
+           multASM.S:15     .text:0000000000000000 multfix
+
+NO UNDEFINED SYMBOLS

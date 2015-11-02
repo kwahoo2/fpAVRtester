@@ -1,0 +1,784 @@
+   1               		.file	"FixedPtOps.c"
+   2               	__SP_H__ = 0x3e
+   3               	__SP_L__ = 0x3d
+   4               	__SREG__ = 0x3f
+   5               	__tmp_reg__ = 0
+   6               	__zero_reg__ = 1
+   7               		.text
+   8               	.Ltext0:
+   9               		.cfi_sections	.debug_frame
+  10               	.global	divfix
+  12               	divfix:
+  13               	.LFB5:
+  14               		.file 1 "FixedPtOps.c"
+   1:FixedPtOps.c  **** // Test fixed-point multiply     
+   2:FixedPtOps.c  ****              
+   3:FixedPtOps.c  **** #include <inttypes.h>
+   4:FixedPtOps.c  **** #include <avr/io.h>
+   5:FixedPtOps.c  **** #include <avr/interrupt.h>
+   6:FixedPtOps.c  **** #include <stdio.h>
+   7:FixedPtOps.c  **** //#include <stdlib.h>
+   8:FixedPtOps.c  **** 
+   9:FixedPtOps.c  **** //set up the debugging utility ASSERT
+  10:FixedPtOps.c  **** #define __ASSERT_USE_STDERR
+  11:FixedPtOps.c  **** #include <assert.h>
+  12:FixedPtOps.c  **** #include "uart.h"
+  13:FixedPtOps.c  **** 
+  14:FixedPtOps.c  **** 
+  15:FixedPtOps.c  **** /* define CPU frequency in Mhz here if not defined in Makefile */
+  16:FixedPtOps.c  **** #ifndef F_CPU
+  17:FixedPtOps.c  **** #define F_CPU 8000000UL
+  18:FixedPtOps.c  **** #endif
+  19:FixedPtOps.c  **** 
+  20:FixedPtOps.c  **** /********************************************************************************
+  21:FixedPtOps.c  **** Macros and Defines
+  22:FixedPtOps.c  **** ********************************************************************************/
+  23:FixedPtOps.c  **** 
+  24:FixedPtOps.c  **** #define BAUD 9600
+  25:FixedPtOps.c  **** #define MYUBRR F_CPU/16/BAUD-1
+  26:FixedPtOps.c  **** 
+  27:FixedPtOps.c  **** // UART file descriptor
+  28:FixedPtOps.c  **** // putchar and getchar are in uart.c
+  29:FixedPtOps.c  **** FILE uart_str = FDEV_SETUP_STREAM(usart_putchar, usart_getchar, _FDEV_SETUP_RW);
+  30:FixedPtOps.c  **** 
+  31:FixedPtOps.c  **** 
+  32:FixedPtOps.c  **** //=== Macros for comparison to asm/c versions ===============
+  33:FixedPtOps.c  **** // multiply two fixed 8:8 numbers 
+  34:FixedPtOps.c  **** #define multfixSlow(a,b) ((int)((((long)(a))*((long)(b)))>>8)) 
+  35:FixedPtOps.c  **** // divide two fixed 8:8 numbers 
+  36:FixedPtOps.c  **** #define divfixSlow(a,b)  ((int)((((long)(a))<<8)/((long)(b))))
+  37:FixedPtOps.c  **** 
+  38:FixedPtOps.c  **** //========================================================
+  39:FixedPtOps.c  **** int divfix(int nn, int dd)
+  40:FixedPtOps.c  **** {
+  15               		.loc 1 40 0
+  16               		.cfi_startproc
+  17               	.LVL0:
+  18 0000 8F92      		push r8
+  19               	.LCFI0:
+  20               		.cfi_def_cfa_offset 3
+  21               		.cfi_offset 8, -2
+  22 0002 9F92      		push r9
+  23               	.LCFI1:
+  24               		.cfi_def_cfa_offset 4
+  25               		.cfi_offset 9, -3
+  26 0004 BF92      		push r11
+  27               	.LCFI2:
+  28               		.cfi_def_cfa_offset 5
+  29               		.cfi_offset 11, -4
+  30 0006 CF92      		push r12
+  31               	.LCFI3:
+  32               		.cfi_def_cfa_offset 6
+  33               		.cfi_offset 12, -5
+  34 0008 DF92      		push r13
+  35               	.LCFI4:
+  36               		.cfi_def_cfa_offset 7
+  37               		.cfi_offset 13, -6
+  38 000a EF92      		push r14
+  39               	.LCFI5:
+  40               		.cfi_def_cfa_offset 8
+  41               		.cfi_offset 14, -7
+  42 000c FF92      		push r15
+  43               	.LCFI6:
+  44               		.cfi_def_cfa_offset 9
+  45               		.cfi_offset 15, -8
+  46 000e 0F93      		push r16
+  47               	.LCFI7:
+  48               		.cfi_def_cfa_offset 10
+  49               		.cfi_offset 16, -9
+  50 0010 1F93      		push r17
+  51               	.LCFI8:
+  52               		.cfi_def_cfa_offset 11
+  53               		.cfi_offset 17, -10
+  54 0012 CF93      		push r28
+  55               	.LCFI9:
+  56               		.cfi_def_cfa_offset 12
+  57               		.cfi_offset 28, -11
+  58 0014 DF93      		push r29
+  59               	.LCFI10:
+  60               		.cfi_def_cfa_offset 13
+  61               		.cfi_offset 29, -12
+  62 0016 1F92      		push __zero_reg__
+  63               	.LCFI11:
+  64               		.cfi_def_cfa_offset 14
+  65 0018 CDB7      		in r28,__SP_L__
+  66 001a DEB7      		in r29,__SP_H__
+  67               	.LCFI12:
+  68               		.cfi_def_cfa_register 28
+  69               	/* prologue: function */
+  70               	/* frame size = 1 */
+  71               	/* stack size = 12 */
+  72               	.L__stack_usage = 12
+  73 001c 6C01      		movw r12,r24
+  74 001e 4B01      		movw r8,r22
+  75               	.LVL1:
+  41:FixedPtOps.c  ****     int x, d ;
+  42:FixedPtOps.c  ****     signed char count, neg ;
+  43:FixedPtOps.c  ****     count = 0;
+  44:FixedPtOps.c  ****     neg = 0 ; 
+  45:FixedPtOps.c  ****     d = dd ;
+  46:FixedPtOps.c  ****     
+  47:FixedPtOps.c  ****     // only works with + numbers
+  48:FixedPtOps.c  ****     if (d & 0x8000)
+  76               		.loc 1 48 0
+  77 0020 77FF      		sbrs r23,7
+  78 0022 00C0      		rjmp .L10
+  79               	.LVL2:
+  49:FixedPtOps.c  ****     {
+  50:FixedPtOps.c  ****         neg = 1;
+  51:FixedPtOps.c  ****         d = -d ;
+  80               		.loc 1 51 0
+  81 0024 9194      		neg r9
+  82 0026 8194      		neg r8
+  83 0028 9108      		sbc r9,__zero_reg__
+  84               	.LVL3:
+  50:FixedPtOps.c  ****         d = -d ;
+  85               		.loc 1 50 0
+  86 002a 41E0      		ldi r20,lo8(1)
+  87 002c 00C0      		rjmp .L2
+  88               	.LVL4:
+  89               	.L10:
+  44:FixedPtOps.c  ****     d = dd ;
+  90               		.loc 1 44 0
+  91 002e 40E0      		ldi r20,0
+  92               	.LVL5:
+  93               	.L2:
+  44:FixedPtOps.c  ****     d = dd ;
+  94               		.loc 1 44 0 is_stmt 0 discriminator 1
+  95 0030 B12C      		mov r11,__zero_reg__
+  96               	.LVL6:
+  97               	.L3:
+  52:FixedPtOps.c  ****     }
+  53:FixedPtOps.c  ****     
+  54:FixedPtOps.c  ****     // range reduction
+  55:FixedPtOps.c  ****     while (d>0x0100)
+  98               		.loc 1 55 0 is_stmt 1 discriminator 1
+  99 0032 21E0      		ldi r18,1
+ 100 0034 8216      		cp r8,r18
+ 101 0036 9206      		cpc r9,r18
+ 102 0038 04F0      		brlt .L5
+ 103 003a BA94      		dec r11
+ 104               	.LVL7:
+  56:FixedPtOps.c  ****     {
+  57:FixedPtOps.c  ****         --count ;
+  58:FixedPtOps.c  ****         d >>= 1 ;
+ 105               		.loc 1 58 0
+ 106 003c 9594      		asr r9
+ 107 003e 8794      		ror r8
+ 108               	.LVL8:
+ 109 0040 00C0      		rjmp .L3
+ 110               	.LVL9:
+ 111               	.L5:
+ 112 0042 C401      		movw r24,r8
+ 113 0044 880F      		lsl r24
+ 114 0046 991F      		rol r25
+  59:FixedPtOps.c  ****     }
+  60:FixedPtOps.c  ****     
+  61:FixedPtOps.c  ****     while (d<0x0080)
+ 115               		.loc 1 61 0 discriminator 1
+ 116 0048 60E8      		ldi r22,-128
+ 117 004a 8616      		cp r8,r22
+ 118 004c 9104      		cpc r9,__zero_reg__
+ 119 004e 04F4      		brge .L15
+ 120 0050 B394      		inc r11
+ 121               	.LVL10:
+  62:FixedPtOps.c  ****     {
+  63:FixedPtOps.c  ****         ++count ;
+  64:FixedPtOps.c  ****         d <<= 1 ;
+ 122               		.loc 1 64 0
+ 123 0052 4C01      		movw r8,r24
+ 124               	.LVL11:
+ 125 0054 00C0      		rjmp .L5
+ 126               	.L15:
+  65:FixedPtOps.c  ****     }
+  66:FixedPtOps.c  ****      
+  67:FixedPtOps.c  ****     // Newton interation
+  68:FixedPtOps.c  ****     x = 0x02ea - (d<<1) ;
+ 127               		.loc 1 68 0
+ 128 0056 0AEE      		ldi r16,lo8(-22)
+ 129 0058 12E0      		ldi r17,lo8(2)
+ 130 005a 081B      		sub r16,r24
+ 131 005c 190B      		sbc r17,r25
+ 132               	.LVL12:
+  69:FixedPtOps.c  ****     x = multfix(x, 0x0200-multfix(d,x));
+ 133               		.loc 1 69 0
+ 134 005e B801      		movw r22,r16
+ 135 0060 C401      		movw r24,r8
+ 136 0062 4983      		std Y+1,r20
+ 137 0064 00D0      		rcall multfix
+ 138               	.LVL13:
+ 139 0066 E12C      		mov r14,__zero_reg__
+ 140 0068 22E0      		ldi r18,lo8(2)
+ 141 006a F22E      		mov r15,r18
+ 142 006c B701      		movw r22,r14
+ 143 006e 681B      		sub r22,r24
+ 144 0070 790B      		sbc r23,r25
+ 145 0072 C801      		movw r24,r16
+ 146 0074 00D0      		rcall multfix
+ 147               	.LVL14:
+ 148 0076 8C01      		movw r16,r24
+ 149               	.LVL15:
+  70:FixedPtOps.c  ****     x = multfix(x, 0x0200-multfix(d,x)); 
+ 150               		.loc 1 70 0
+ 151 0078 BC01      		movw r22,r24
+ 152 007a C401      		movw r24,r8
+ 153 007c 00D0      		rcall multfix
+ 154               	.LVL16:
+ 155 007e B701      		movw r22,r14
+ 156 0080 681B      		sub r22,r24
+ 157 0082 790B      		sbc r23,r25
+ 158 0084 C801      		movw r24,r16
+ 159 0086 00D0      		rcall multfix
+ 160               	.LVL17:
+  71:FixedPtOps.c  **** 
+  72:FixedPtOps.c  ****     
+  73:FixedPtOps.c  ****     // range expansion
+  74:FixedPtOps.c  ****     if (count>0)  x = x<<count ;
+ 161               		.loc 1 74 0
+ 162 0088 4981      		ldd r20,Y+1
+ 163 008a 1B14      		cp __zero_reg__,r11
+ 164 008c 04F4      		brge .L7
+ 165               		.loc 1 74 0 is_stmt 0 discriminator 1
+ 166 008e 00C0      		rjmp 2f
+ 167               		1:
+ 168 0090 880F      		lsl r24
+ 169 0092 991F      		rol r25
+ 170               		2:
+ 171 0094 BA94      		dec r11
+ 172 0096 02F4      		brpl 1b
+ 173               	.LVL18:
+ 174 0098 00C0      		rjmp .L8
+ 175               	.L7:
+  75:FixedPtOps.c  ****     else if (count<0) x = x>>(-count) ;  
+ 176               		.loc 1 75 0 is_stmt 1
+ 177 009a BB20      		tst r11
+ 178 009c 01F0      		breq .L8
+ 179               		.loc 1 75 0 is_stmt 0 discriminator 1
+ 180 009e EB2D      		mov r30,r11
+ 181 00a0 FF27      		clr r31
+ 182 00a2 E195      		neg r30
+ 183 00a4 04F4      		brge .+2
+ 184 00a6 F095      		com r31
+ 185 00a8 0E2E      		mov r0,r30
+ 186 00aa 00C0      		rjmp 2f
+ 187               		1:
+ 188 00ac 9595      		asr r25
+ 189 00ae 8795      		ror r24
+ 190               		2:
+ 191 00b0 0A94      		dec r0
+ 192 00b2 02F4      		brpl 1b
+ 193               	.LVL19:
+ 194               	.L8:
+  76:FixedPtOps.c  ****     
+  77:FixedPtOps.c  ****     // fix sign
+  78:FixedPtOps.c  ****     if (neg==1) x=-x;
+ 195               		.loc 1 78 0 is_stmt 1
+ 196 00b4 4130      		cpi r20,lo8(1)
+ 197 00b6 01F4      		brne .L9
+ 198               		.loc 1 78 0 is_stmt 0 discriminator 1
+ 199 00b8 9195      		neg r25
+ 200 00ba 8195      		neg r24
+ 201 00bc 9109      		sbc r25,__zero_reg__
+ 202               	.LVL20:
+ 203               	.L9:
+  79:FixedPtOps.c  ****     
+  80:FixedPtOps.c  ****     //form ratio
+  81:FixedPtOps.c  ****     x = multfix(x,nn) ;  
+ 204               		.loc 1 81 0 is_stmt 1
+ 205 00be B601      		movw r22,r12
+ 206               	/* epilogue start */
+  82:FixedPtOps.c  ****      
+  83:FixedPtOps.c  ****     return x ;  
+  84:FixedPtOps.c  **** }
+ 207               		.loc 1 84 0
+ 208 00c0 0F90      		pop __tmp_reg__
+ 209 00c2 DF91      		pop r29
+ 210 00c4 CF91      		pop r28
+ 211 00c6 1F91      		pop r17
+ 212 00c8 0F91      		pop r16
+ 213 00ca FF90      		pop r15
+ 214 00cc EF90      		pop r14
+ 215 00ce DF90      		pop r13
+ 216 00d0 CF90      		pop r12
+ 217               	.LVL21:
+ 218 00d2 BF90      		pop r11
+ 219               	.LVL22:
+ 220 00d4 9F90      		pop r9
+ 221 00d6 8F90      		pop r8
+ 222               	.LVL23:
+  81:FixedPtOps.c  ****      
+ 223               		.loc 1 81 0
+ 224 00d8 00C0      		rjmp multfix
+ 225               	.LVL24:
+ 226               		.cfi_endproc
+ 227               	.LFE5:
+ 229               	.global	sqrtfix
+ 231               	sqrtfix:
+ 232               	.LFB6:
+  85:FixedPtOps.c  **** 
+  86:FixedPtOps.c  **** //========================================================
+  87:FixedPtOps.c  **** int sqrtfix(int aa)
+  88:FixedPtOps.c  **** {
+ 233               		.loc 1 88 0
+ 234               		.cfi_startproc
+ 235               	.LVL25:
+ 236 00da EF92      		push r14
+ 237               	.LCFI13:
+ 238               		.cfi_def_cfa_offset 3
+ 239               		.cfi_offset 14, -2
+ 240 00dc FF92      		push r15
+ 241               	.LCFI14:
+ 242               		.cfi_def_cfa_offset 4
+ 243               		.cfi_offset 15, -3
+ 244 00de 0F93      		push r16
+ 245               	.LCFI15:
+ 246               		.cfi_def_cfa_offset 5
+ 247               		.cfi_offset 16, -4
+ 248 00e0 1F93      		push r17
+ 249               	.LCFI16:
+ 250               		.cfi_def_cfa_offset 6
+ 251               		.cfi_offset 17, -5
+ 252 00e2 CF93      		push r28
+ 253               	.LCFI17:
+ 254               		.cfi_def_cfa_offset 7
+ 255               		.cfi_offset 28, -6
+ 256 00e4 DF93      		push r29
+ 257               	.LCFI18:
+ 258               		.cfi_def_cfa_offset 8
+ 259               		.cfi_offset 29, -7
+ 260 00e6 00D0      		rcall .
+ 261 00e8 1F92      		push __zero_reg__
+ 262               	.LCFI19:
+ 263               		.cfi_def_cfa_offset 11
+ 264 00ea CDB7      		in r28,__SP_L__
+ 265 00ec DEB7      		in r29,__SP_H__
+ 266               	.LCFI20:
+ 267               		.cfi_def_cfa_register 28
+ 268               	/* prologue: function */
+ 269               	/* frame size = 3 */
+ 270               	/* stack size = 9 */
+ 271               	.L__stack_usage = 9
+ 272 00ee 8C01      		movw r16,r24
+ 273               	.LVL26:
+  89:FixedPtOps.c  ****    
+  90:FixedPtOps.c  ****     int a;
+  91:FixedPtOps.c  ****     char nextbit, ahigh;
+  92:FixedPtOps.c  ****     int root, p ; 
+  93:FixedPtOps.c  ****     a = aa; 
+  94:FixedPtOps.c  ****     ahigh = a>>8 ;
+  95:FixedPtOps.c  ****     //
+  96:FixedPtOps.c  ****     // range sort to get integer part and to
+  97:FixedPtOps.c  ****     // check for weird bits near the top of the range
+  98:FixedPtOps.c  ****     if (ahigh >= 0x40)     //bigger than 64?
+ 274               		.loc 1 98 0
+ 275 00f0 1034      		cpi r17,lo8(64)
+ 276 00f2 00F0      		brlo .L17
+  99:FixedPtOps.c  ****     {
+ 100:FixedPtOps.c  ****         if (a > 0x7e8f)    //>=126.562 = 11.25^2
+ 277               		.loc 1 100 0
+ 278 00f4 0039      		cpi r16,-112
+ 279 00f6 9EE7      		ldi r25,126
+ 280 00f8 1907      		cpc r17,r25
+ 281 00fa 04F4      		brge .L23
+ 101:FixedPtOps.c  ****         {
+ 102:FixedPtOps.c  ****             root = 0x0b40;  // 11
+ 103:FixedPtOps.c  ****             nextbit = 0x10 ;
+ 104:FixedPtOps.c  ****         } 
+ 105:FixedPtOps.c  ****         else if (ahigh >= 0x79)    //>=121
+ 282               		.loc 1 105 0
+ 283 00fc 1937      		cpi r17,lo8(121)
+ 284 00fe 00F4      		brsh .L24
+ 106:FixedPtOps.c  ****         {
+ 107:FixedPtOps.c  ****             root = 0x0b00;  // 11
+ 108:FixedPtOps.c  ****             nextbit = 0x40 ;
+ 109:FixedPtOps.c  ****         }
+ 110:FixedPtOps.c  ****         else if (ahigh >= 0x64)    //>=100
+ 285               		.loc 1 110 0
+ 286 0100 1436      		cpi r17,lo8(100)
+ 287 0102 00F4      		brsh .L25
+ 111:FixedPtOps.c  ****         {
+ 112:FixedPtOps.c  ****             root = 0x0a00;  // 10
+ 113:FixedPtOps.c  ****             nextbit = 0x80 ;
+ 114:FixedPtOps.c  ****         }  
+ 115:FixedPtOps.c  ****         else if (ahigh >= 0x51)    //>=81
+ 288               		.loc 1 115 0
+ 289 0104 1135      		cpi r17,lo8(81)
+ 290 0106 00F0      		brlo .L26
+ 116:FixedPtOps.c  ****         {
+ 117:FixedPtOps.c  ****             root = 0x0900;  // 9
+ 291               		.loc 1 117 0
+ 292 0108 40E0      		ldi r20,0
+ 293 010a 59E0      		ldi r21,lo8(9)
+ 294 010c 00C0      		rjmp .L33
+ 295               	.L17:
+ 118:FixedPtOps.c  ****             nextbit = 0x80 ;
+ 119:FixedPtOps.c  ****         } 
+ 120:FixedPtOps.c  ****         else   //64
+ 121:FixedPtOps.c  ****         {
+ 122:FixedPtOps.c  ****             root = 0x0800;      //8
+ 123:FixedPtOps.c  ****             nextbit = 0x80 ; 
+ 124:FixedPtOps.c  ****         } 
+ 125:FixedPtOps.c  ****     }
+ 126:FixedPtOps.c  ****     else if  (ahigh >= 0x10)  //16    //smaller than 64 and bigger then 16
+ 296               		.loc 1 126 0
+ 297 010e 1031      		cpi r17,lo8(16)
+ 298 0110 00F0      		brlo .L19
+ 127:FixedPtOps.c  ****     { 
+ 128:FixedPtOps.c  ****         if (ahigh >= 0x31)  //49
+ 299               		.loc 1 128 0
+ 300 0112 1133      		cpi r17,lo8(49)
+ 301 0114 00F4      		brsh .L27
+ 129:FixedPtOps.c  ****         {
+ 130:FixedPtOps.c  ****             root = 0x0700;      //7
+ 131:FixedPtOps.c  ****             nextbit = 0x80 ; 
+ 132:FixedPtOps.c  ****         }
+ 133:FixedPtOps.c  ****         else if (ahigh >= 0x24)  //36
+ 302               		.loc 1 133 0
+ 303 0116 1432      		cpi r17,lo8(36)
+ 304 0118 00F4      		brsh .L28
+ 134:FixedPtOps.c  ****         {
+ 135:FixedPtOps.c  ****             root = 0x0600;      //6
+ 136:FixedPtOps.c  ****             nextbit = 0x80 ; 
+ 137:FixedPtOps.c  ****         }
+ 138:FixedPtOps.c  ****         else if (ahigh >= 0x19)  //25
+ 305               		.loc 1 138 0
+ 306 011a 1931      		cpi r17,lo8(25)
+ 307 011c 00F0      		brlo .L29
+ 139:FixedPtOps.c  ****         {
+ 140:FixedPtOps.c  ****             root = 0x0500;      //5
+ 308               		.loc 1 140 0
+ 309 011e 40E0      		ldi r20,0
+ 310 0120 55E0      		ldi r21,lo8(5)
+ 311 0122 00C0      		rjmp .L33
+ 312               	.L23:
+ 102:FixedPtOps.c  ****             nextbit = 0x10 ;
+ 313               		.loc 1 102 0
+ 314 0124 40E4      		ldi r20,lo8(64)
+ 315 0126 5BE0      		ldi r21,lo8(11)
+ 103:FixedPtOps.c  ****         } 
+ 316               		.loc 1 103 0
+ 317 0128 20E1      		ldi r18,lo8(16)
+ 318 012a 00C0      		rjmp .L20
+ 319               	.L24:
+ 107:FixedPtOps.c  ****             nextbit = 0x40 ;
+ 320               		.loc 1 107 0
+ 321 012c 40E0      		ldi r20,0
+ 322 012e 5BE0      		ldi r21,lo8(11)
+ 108:FixedPtOps.c  ****         }
+ 323               		.loc 1 108 0
+ 324 0130 20E4      		ldi r18,lo8(64)
+ 325 0132 00C0      		rjmp .L20
+ 326               	.L25:
+ 112:FixedPtOps.c  ****             nextbit = 0x80 ;
+ 327               		.loc 1 112 0
+ 328 0134 40E0      		ldi r20,0
+ 329 0136 5AE0      		ldi r21,lo8(10)
+ 330 0138 00C0      		rjmp .L33
+ 331               	.L26:
+ 122:FixedPtOps.c  ****             nextbit = 0x80 ; 
+ 332               		.loc 1 122 0
+ 333 013a 40E0      		ldi r20,0
+ 334 013c 58E0      		ldi r21,lo8(8)
+ 335 013e 00C0      		rjmp .L33
+ 336               	.L27:
+ 130:FixedPtOps.c  ****             nextbit = 0x80 ; 
+ 337               		.loc 1 130 0
+ 338 0140 40E0      		ldi r20,0
+ 339 0142 57E0      		ldi r21,lo8(7)
+ 340 0144 00C0      		rjmp .L33
+ 341               	.L28:
+ 135:FixedPtOps.c  ****             nextbit = 0x80 ; 
+ 342               		.loc 1 135 0
+ 343 0146 40E0      		ldi r20,0
+ 344 0148 56E0      		ldi r21,lo8(6)
+ 345 014a 00C0      		rjmp .L33
+ 346               	.L29:
+ 141:FixedPtOps.c  ****             nextbit = 0x80 ; 
+ 142:FixedPtOps.c  ****         }   
+ 143:FixedPtOps.c  ****         else //16
+ 144:FixedPtOps.c  ****         {
+ 145:FixedPtOps.c  ****             root = 0x0400;      //4
+ 347               		.loc 1 145 0
+ 348 014c 40E0      		ldi r20,0
+ 349 014e 54E0      		ldi r21,lo8(4)
+ 350 0150 00C0      		rjmp .L33
+ 351               	.L19:
+ 146:FixedPtOps.c  ****             nextbit = 0x80 ; 
+ 147:FixedPtOps.c  ****         }
+ 148:FixedPtOps.c  ****     }  
+ 149:FixedPtOps.c  ****     else       //smaller than 16
+ 150:FixedPtOps.c  ****     { 
+ 151:FixedPtOps.c  ****          if (ahigh >= 0x09)  //9
+ 352               		.loc 1 151 0
+ 353 0152 1930      		cpi r17,lo8(9)
+ 354 0154 00F0      		brlo .L34
+ 152:FixedPtOps.c  ****         {
+ 153:FixedPtOps.c  ****             root = 0x0300;      //3
+ 355               		.loc 1 153 0
+ 356 0156 40E0      		ldi r20,0
+ 357 0158 53E0      		ldi r21,lo8(3)
+ 358 015a 00C0      		rjmp .L33
+ 359               	.L34:
+ 154:FixedPtOps.c  ****             nextbit = 0x80 ; 
+ 155:FixedPtOps.c  ****         } 
+ 156:FixedPtOps.c  ****         else if (ahigh >= 0x04)  //4
+ 360               		.loc 1 156 0
+ 361 015c 1430      		cpi r17,lo8(4)
+ 362 015e 00F0      		brlo .L35
+ 157:FixedPtOps.c  ****         {
+ 158:FixedPtOps.c  ****             root = 0x0200;      //2
+ 363               		.loc 1 158 0
+ 364 0160 40E0      		ldi r20,0
+ 365 0162 52E0      		ldi r21,lo8(2)
+ 366 0164 00C0      		rjmp .L33
+ 367               	.L35:
+ 159:FixedPtOps.c  ****             nextbit = 0x80 ; 
+ 160:FixedPtOps.c  ****         }
+ 161:FixedPtOps.c  ****         else if (ahigh >= 0x01)  //1
+ 368               		.loc 1 161 0
+ 369 0166 1111      		cpse r17,__zero_reg__
+ 370 0168 00C0      		rjmp .L36
+ 162:FixedPtOps.c  ****         {
+ 163:FixedPtOps.c  ****             root = 0x0100;      //1
+ 164:FixedPtOps.c  ****             nextbit = 0x80 ; 
+ 165:FixedPtOps.c  ****         }  
+ 166:FixedPtOps.c  ****         else     //less than one
+ 167:FixedPtOps.c  ****         {
+ 168:FixedPtOps.c  ****             root = 0;
+ 371               		.loc 1 168 0
+ 372 016a 40E0      		ldi r20,0
+ 373 016c 50E0      		ldi r21,0
+ 374 016e 00C0      		rjmp .L33
+ 375               	.L36:
+ 163:FixedPtOps.c  ****             nextbit = 0x80 ; 
+ 376               		.loc 1 163 0
+ 377 0170 40E0      		ldi r20,0
+ 378 0172 51E0      		ldi r21,lo8(1)
+ 379               	.L33:
+ 164:FixedPtOps.c  ****         }  
+ 380               		.loc 1 164 0
+ 381 0174 20E8      		ldi r18,lo8(-128)
+ 382               	.LVL27:
+ 383               	.L20:
+ 384               	.LBB2:
+ 169:FixedPtOps.c  ****             nextbit = 0x80 ;  
+ 170:FixedPtOps.c  ****         }
+ 171:FixedPtOps.c  ****     }
+ 172:FixedPtOps.c  ****     // now get the low order bits  
+ 173:FixedPtOps.c  ****     while (nextbit)
+ 174:FixedPtOps.c  ****     {
+ 175:FixedPtOps.c  **** 		root = nextbit + root;
+ 385               		.loc 1 175 0
+ 386 0176 7A01      		movw r14,r20
+ 387 0178 E20E      		add r14,r18
+ 388 017a F11C      		adc r15,__zero_reg__
+ 389               	.LVL28:
+ 176:FixedPtOps.c  **** 		p =  multfix(root,root);  
+ 390               		.loc 1 176 0
+ 391 017c B701      		movw r22,r14
+ 392 017e C701      		movw r24,r14
+ 393 0180 2B83      		std Y+3,r18
+ 394 0182 4983      		std Y+1,r20
+ 395 0184 5A83      		std Y+2,r21
+ 396 0186 00D0      		rcall multfix
+ 397               	.LVL29:
+ 177:FixedPtOps.c  ****         if (p >= a) root = root - nextbit ;
+ 398               		.loc 1 177 0
+ 399 0188 2B81      		ldd r18,Y+3
+ 400 018a 4981      		ldd r20,Y+1
+ 401 018c 5A81      		ldd r21,Y+2
+ 402 018e 8017      		cp r24,r16
+ 403 0190 9107      		cpc r25,r17
+ 404 0192 04F4      		brge .L21
+ 175:FixedPtOps.c  **** 		p =  multfix(root,root);  
+ 405               		.loc 1 175 0
+ 406 0194 A701      		movw r20,r14
+ 407               	.L21:
+ 408               	.LVL30:
+ 178:FixedPtOps.c  ****     	nextbit = nextbit>>1 ;
+ 409               		.loc 1 178 0
+ 410 0196 2695      		lsr r18
+ 411               	.LVL31:
+ 412               	.LBE2:
+ 173:FixedPtOps.c  ****     {
+ 413               		.loc 1 173 0
+ 414 0198 01F4      		brne .L20
+ 179:FixedPtOps.c  ****     }
+ 180:FixedPtOps.c  ****     return root ;  
+ 181:FixedPtOps.c  **** }
+ 415               		.loc 1 181 0
+ 416 019a CA01      		movw r24,r20
+ 417               	.LVL32:
+ 418               	/* epilogue start */
+ 419 019c 0F90      		pop __tmp_reg__
+ 420 019e 0F90      		pop __tmp_reg__
+ 421 01a0 0F90      		pop __tmp_reg__
+ 422 01a2 DF91      		pop r29
+ 423 01a4 CF91      		pop r28
+ 424 01a6 1F91      		pop r17
+ 425 01a8 0F91      		pop r16
+ 426               	.LVL33:
+ 427 01aa FF90      		pop r15
+ 428 01ac EF90      		pop r14
+ 429 01ae 0895      		ret
+ 430               		.cfi_endproc
+ 431               	.LFE6:
+ 433               		.section	.text.startup,"ax",@progbits
+ 434               	.global	main
+ 436               	main:
+ 437               	.LFB7:
+ 182:FixedPtOps.c  ****   
+ 183:FixedPtOps.c  **** 
+ 184:FixedPtOps.c  **** //======================================================  
+ 185:FixedPtOps.c  **** 
+ 186:FixedPtOps.c  **** volatile int fix0, fix1, prod ; 
+ 187:FixedPtOps.c  **** 
+ 188:FixedPtOps.c  **** int main(void)
+ 189:FixedPtOps.c  **** {  
+ 438               		.loc 1 189 0
+ 439               		.cfi_startproc
+ 440               	/* prologue: function */
+ 441               	/* frame size = 0 */
+ 442               	/* stack size = 0 */
+ 443               	.L__stack_usage = 0
+ 190:FixedPtOps.c  ****   //init the UART -- uart_init() is in uart.c
+ 191:FixedPtOps.c  ****   usart_init ( MYUBRR );
+ 444               		.loc 1 191 0
+ 445 0000 83E3      		ldi r24,lo8(51)
+ 446 0002 90E0      		ldi r25,0
+ 447 0004 00D0      		rcall usart_init
+ 448               	.LVL34:
+ 192:FixedPtOps.c  ****   sei();
+ 449               		.loc 1 192 0
+ 450               	/* #APP */
+ 451               	 ;  192 "FixedPtOps.c" 1
+ 452 0006 7894      		sei
+ 453               	 ;  0 "" 2
+ 454               	/* #NOAPP */
+ 455               	.L38:
+ 456               	.LBB3:
+ 193:FixedPtOps.c  ****   while(1)
+ 194:FixedPtOps.c  ****   {
+ 195:FixedPtOps.c  ****   
+ 196:FixedPtOps.c  ****     // fixed input
+ 197:FixedPtOps.c  ****     unsigned char f00 = usart_getchar();
+ 457               		.loc 1 197 0 discriminator 1
+ 458 0008 00D0      		rcall usart_getchar
+ 459               	.LVL35:
+ 460 000a 182F      		mov r17,r24
+ 461               	.LVL36:
+ 198:FixedPtOps.c  ****     unsigned char f01 = usart_getchar();
+ 462               		.loc 1 198 0 discriminator 1
+ 463 000c 00D0      		rcall usart_getchar
+ 464               	.LVL37:
+ 465 000e D82F      		mov r29,r24
+ 466               	.LVL38:
+ 199:FixedPtOps.c  ****     unsigned char f10 = usart_getchar();
+ 467               		.loc 1 199 0 discriminator 1
+ 468 0010 00D0      		rcall usart_getchar
+ 469               	.LVL39:
+ 470 0012 C82F      		mov r28,r24
+ 471               	.LVL40:
+ 200:FixedPtOps.c  ****     unsigned char f11 = usart_getchar();
+ 472               		.loc 1 200 0 discriminator 1
+ 473 0014 00D0      		rcall usart_getchar
+ 474               	.LVL41:
+ 201:FixedPtOps.c  ****     
+ 202:FixedPtOps.c  ****     fix0 = ((int)f00 << 8) + ((int)f01);
+ 475               		.loc 1 202 0 discriminator 1
+ 476 0016 412F      		mov r20,r17
+ 477 0018 50E0      		ldi r21,0
+ 478 001a 542F      		mov r21,r20
+ 479 001c 4427      		clr r20
+ 480 001e 4D0F      		add r20,r29
+ 481 0020 511D      		adc r21,__zero_reg__
+ 482 0022 5093 0000 		sts fix0+1,r21
+ 483 0026 4093 0000 		sts fix0,r20
+ 203:FixedPtOps.c  ****     fix1 = ((int)f10 << 8) + ((int)f11);
+ 484               		.loc 1 203 0 discriminator 1
+ 485 002a 2C2F      		mov r18,r28
+ 486 002c 30E0      		ldi r19,0
+ 487 002e 322F      		mov r19,r18
+ 488 0030 2227      		clr r18
+ 489 0032 280F      		add r18,r24
+ 490 0034 311D      		adc r19,__zero_reg__
+ 491 0036 3093 0000 		sts fix1+1,r19
+ 492 003a 2093 0000 		sts fix1,r18
+ 204:FixedPtOps.c  ****     
+ 205:FixedPtOps.c  ****     // test multiply 
+ 206:FixedPtOps.c  ****     prod = multfix(fix0, fix1) ;
+ 493               		.loc 1 206 0 discriminator 1
+ 494 003e 6091 0000 		lds r22,fix1
+ 495 0042 7091 0000 		lds r23,fix1+1
+ 496 0046 8091 0000 		lds r24,fix0
+ 497 004a 9091 0000 		lds r25,fix0+1
+ 498               	.LVL42:
+ 499 004e 00D0      		rcall multfix
+ 500               	.LVL43:
+ 501 0050 9093 0000 		sts prod+1,r25
+ 502 0054 8093 0000 		sts prod,r24
+ 207:FixedPtOps.c  ****     unsigned char out0 = (unsigned char)((prod >> 8) & 0xFF);
+ 503               		.loc 1 207 0 discriminator 1
+ 504 0058 8091 0000 		lds r24,prod
+ 505 005c 9091 0000 		lds r25,prod+1
+ 506               	.LVL44:
+ 208:FixedPtOps.c  ****     unsigned char out1 = (unsigned char)(prod & 0xFF);
+ 507               		.loc 1 208 0 discriminator 1
+ 508 0060 C091 0000 		lds r28,prod
+ 509 0064 D091 0000 		lds r29,prod+1
+ 510               	.LVL45:
+ 209:FixedPtOps.c  ****     
+ 210:FixedPtOps.c  ****     usart_putchar(out0);
+ 511               		.loc 1 210 0 discriminator 1
+ 512 0068 892F      		mov r24,r25
+ 513               	.LVL46:
+ 514 006a 00D0      		rcall usart_putchar
+ 515               	.LVL47:
+ 211:FixedPtOps.c  ****     usart_putchar(out1);
+ 516               		.loc 1 211 0 discriminator 1
+ 517 006c 8C2F      		mov r24,r28
+ 518 006e 00D0      		rcall usart_putchar
+ 519               	.LVL48:
+ 520 0070 00C0      		rjmp .L38
+ 521               	.LBE3:
+ 522               		.cfi_endproc
+ 523               	.LFE7:
+ 525               		.comm	prod,2,1
+ 526               		.comm	fix1,2,1
+ 527               		.comm	fix0,2,1
+ 528               	.global	uart_str
+ 529               		.data
+ 532               	uart_str:
+ 533 0000 0000 00   		.zero	3
+ 534 0003 03        		.byte	3
+ 535 0004 0000 0000 		.zero	4
+ 536 0008 0000      		.word	gs(usart_putchar)
+ 537 000a 0000      		.word	gs(usart_getchar)
+ 538 000c 0000      		.word	0
+ 539               		.text
+ 540               	.Letext0:
+ 541               		.file 2 "/usr/lib/avr/include/stdint.h"
+ 542               		.file 3 "/usr/lib/avr/include/stdio.h"
+ 543               		.file 4 "uart.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 FixedPtOps.c
+     /tmp/cchHXj5J.s:2      *ABS*:000000000000003e __SP_H__
+     /tmp/cchHXj5J.s:3      *ABS*:000000000000003d __SP_L__
+     /tmp/cchHXj5J.s:4      *ABS*:000000000000003f __SREG__
+     /tmp/cchHXj5J.s:5      *ABS*:0000000000000000 __tmp_reg__
+     /tmp/cchHXj5J.s:6      *ABS*:0000000000000001 __zero_reg__
+     /tmp/cchHXj5J.s:12     .text:0000000000000000 divfix
+     /tmp/cchHXj5J.s:231    .text:00000000000000da sqrtfix
+     /tmp/cchHXj5J.s:436    .text.startup:0000000000000000 main
+                            *COM*:0000000000000002 fix0
+                            *COM*:0000000000000002 fix1
+                            *COM*:0000000000000002 prod
+     /tmp/cchHXj5J.s:532    .data:0000000000000000 uart_str
+
+UNDEFINED SYMBOLS
+multfix
+usart_init
+usart_getchar
+usart_putchar
+__do_copy_data
+__do_clear_bss
